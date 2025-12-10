@@ -107,7 +107,7 @@ textarea.form-control {
     color: white;
 }
 
-.btn-primary, .btn-danger {
+.btn-primary, .btn-secondary, .btn-danger {
     border: none;
     padding: 8px 16px;
     border-radius: 4px;
@@ -121,6 +121,21 @@ textarea.form-control {
 }
 
 .btn-primary:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+    font-size: 14px;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+}
+
+.btn-secondary:disabled {
     background-color: #cccccc;
     cursor: not-allowed;
 }
@@ -450,4 +465,45 @@ textarea.form-control {
     .modal-footer button {
         width: 100%;
     }
+}
+
+/* 認証フォーム */
+.auth-container {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.help-text {
+    color: #6c757d;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+/* ユーザー情報 */
+.user-info {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#userEmail {
+    font-weight: 600;
+    color: #495057;
+}
+
+/* 表示制御 */
+.logged-in {
+    display: none;
+}
+
+.logged-out {
+    display: none;
 }

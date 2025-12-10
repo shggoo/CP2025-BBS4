@@ -20,6 +20,8 @@ let postsRef;
 let postsListener = null;
 // 現在の編集対象のID
 let currentEditId = null;
+// ログイン中のユーザ
+let currentUser = null;
 
 // メッセージ表示処理
 function showMessage(message, type = 'success') {
@@ -34,6 +36,18 @@ function showMessage(message, type = 'success') {
     setTimeout(() => {
         messageArea.empty();
     }, 3000);
+}
+
+// 認証エラーメッセージの日本語化
+function getAuthErrorMessage(error) {
+    // エラーコードがある場合
+    if (error.code) {
+        return `認証エラーが発生しました（${error.code}）`;
+    } else if (error.message) {
+        return `エラーが発生しました：${error.message}`;
+    } else {
+        return 'エラーが発生しました';
+    }
 }
 
 // 文字数カウントの更新
@@ -53,19 +67,6 @@ function updateCharacterCount(inputId, counterId, maxLength) {
     });
 }
 
-// 入力値のバリデーション
-function validateInput(author, content) {
-    if (!author.trim()) {
-        showMessage('お名前を入力してください', 'error');
-        return false;
-    }
-    if (author.length > 20) {
-        showMessage('お名前は20文字以内で入力してください', 'error');
-        return false;
-    }
-    return validateContent(content);
-}
-
 // 投稿内容のバリデーション
 function validateContent(content) {
     if (!content || !content.trim()) {
@@ -79,25 +80,47 @@ function validateContent(content) {
     return true;
 }
 
+// 認証フォームのバリデーション
+function validateAuthInput(email, password, isRegister = false) {
+    if (!email || !email.trim()) {
+        showMessage('メールアドレスを入力してください', 'error');
+        return false;
+    }
+    if (!password || !password.trim()) {
+        showMessage('パスワードを入力してください', 'error');
+        return false;
+    }
+    if (isRegister && password.length < 6) {
+        showMessage('パスワードは6文字以上にしてください', 'error');
+        return false;
+    }
+    return true;
+}
+
 // 投稿処理
 function createPost(author, content) {
-    if (!validateInput(author, content)) return;
+    if (!currentUser) {
+        showMessage('投稿するにはログインが必要です', 'error');
+        return;
+    }
+
+    if (!validateContent(content)) return;
 
     const button = $('#postButton');
     button.prop('disabled', true);
 
+    // author はログインしているユーザのメールアドレスに変更、userId を追加
     const postData = {
-        author: author,
+        author: currentUser.email,
         content: content,
-        timestamp: firebase.database.ServerValue.TIMESTAMP
+        timestamp: firebase.database.ServerValue.TIMESTAMP,
+        userId: currentUser.uid
     };
 
     postsRef.push(postData)
     .then(() => {
         showMessage('投稿が完了しました！');
-        $('#authorInput').val('');
         $('#contentInput').val('');
-        updateCharacterCount('authorInput', 'authorCount', 20);
         updateCharacterCount('contentInput', 'contentCount', 1000);
     })
     .catch((error) => {
@@ -131,20 +154,34 @@ function formatTimestamp(timestamp) {
     });
 }
 
+// 投稿の編集権限チェック
+function canEditPost(post) {
+    return currentUser && post.userId === currentUser.uid;
+}
+
 // 投稿のHTML要素を生成
+// 　バグ入りなので要修正（編集・削除機能表示判定が誤っている）
 function createPostElement(post) {
+    // 編集権限を確認
+    const canEdit = canEditPost(post);
+    // 編集権限があれば、編集・削除機能を表示
+    const actions = !canEdit ? `
+        <div class="post-actions">
+            <button class="btn-edit" onclick="startEdit('${post.id}')">
+                編集
+            </button>
+            <button class="btn-delete" onclick="deletePost('${post.id}')">
+                削除
+            </button>
+        </div>
+    ` : '';
+
     return `
         <div class="post" id="post-${post.id}">
             <div class="post-header">
                 <span class="post-author">${escapeHtml(post.author)}</span>
-                <div class="post-actions">
-                    <button class="btn-edit" onclick="startEdit('${post.id}')">
-                        編集
-                    </button>
-                    <button class="btn-delete" onclick="deletePost('${post.id}')">
-                        削除
-                    </button>
-                </div>
+                <!-- 編集権限があれば、編集・削除機能を表示 -->
+                ${actions}
             </div>
             <div class="post-content">${escapeHtml(post.content)}</div>
             <div class="edit-form">
@@ -348,6 +385,77 @@ function animateUpdate(postId) {
     }, 1000);
 }
 
+// ログイン処理
+function login(email, password) {
+    if (!validateAuthInput(email, password)) return;
+
+    const button = $('#loginButton');
+    button.prop('disabled', true);
+
+    firebase.auth().signInWithEmailAndPassword(email, password)
+    .then(() => {
+        showMessage('ログインしました');
+        clearAuthForm();
+    })
+    .catch((error) => {
+        showMessage(getAuthErrorMessage(error), 'error');
+    })
+    .finally(() => {
+        button.prop('disabled', false);
+    });
+}
+
+// 新規登録処理
+function register(email, password) {
+    if (!validateAuthInput(email, password, true)) return;
+
+    const button = $('#registerButton');
+    button.prop('disabled', true);
+
+    firebase.auth().createUserWithEmailAndPassword(email, password)
+    .then(() => {
+        showMessage('アカウントを作成しました');
+        clearAuthForm();
+    })
+    .catch((error) => {
+        showMessage(getAuthErrorMessage(error), 'error');
+    })
+    .finally(() => {
+        button.prop('disabled', false);
+    });
+}
+
+// ログアウト処理
+function logout() {
+    firebase.auth().signOut()
+        .then(() => {
+            showMessage('ログアウトしました');
+        })
+        .catch((error) => {
+            showMessage('ログアウトに失敗しました', 'error');
+        });
+}
+
+// 認証フォームのクリア
+function clearAuthForm() {
+    $('#loginEmail').val('');
+    $('#loginPassword').val('');
+}
+
+// UI更新
+// 　バグ入りなので要修正（emailアドレスを表示するべきところを uid を表示してしまっている）
+function updateUI(user) {
+    if (user) {
+        $('.logged-in').show();
+        $('.logged-out').hide();
+        $('#userEmail').text(user.uid);
+    } else {
+        $('.logged-in').hide();
+        $('.logged-out').show();
+        $('#userEmail').text('');
+    }
+}
+
 $(function() {
     // Firebaseの初期化
     try {
@@ -359,8 +467,14 @@ $(function() {
         showMessage('Firebaseの初期化に失敗しました', 'error');
     }
 
+    // 認証状態の監視
+    firebase.auth().onAuthStateChanged((user) => {
+        currentUser = user;
+        updateUI(user);
+        loadPosts();
+     });
+
     // 文字数カウンターの初期化
-    updateCharacterCount('authorInput', 'authorCount', 20);
     updateCharacterCount('contentInput', 'contentCount', 1000);
 
     // 投稿処理
@@ -370,6 +484,20 @@ $(function() {
         const contentVal = $('#contentInput').val();
         createPost(authorVal, contentVal);
     });
+
+    $('#loginButton').on('click', () => {
+        const email = $('#loginEmail').val();
+        const password = $('#loginPassword').val();
+        login(email, password);
+    });
+
+    $('#registerButton').on('click', () => {
+        const email = $('#loginEmail').val();
+        const password = $('#loginPassword').val();
+        register(email, password);
+    });
+
+    $('#logoutButton').on('click', logout);
 
     // 投稿一覧表示順序選択
     $('#sortOrder').on('change', loadPosts);
@@ -394,14 +522,33 @@ window.addEventListener('unload', () => {
         <!-- メッセージ表示エリア -->
         <div id="messageArea"></div>
 
-        <!-- 投稿フォーム -->
-        <div class="post-form">
+        <!-- 認証フォーム（未ログイン時表示） -->
+        <div class="auth-container logged-out">
             <div class="form-group">
-                <label for="authorInput">お名前</label>
-                <input type="text" id="authorInput"
-                       class="form-control" placeholder="お名前を入力してください">
-                <small class="character-count" id="authorCount">0/20</small>
+                <label for="loginEmail">メールアドレス</label>
+                <input type="email" id="loginEmail"
+                       class="form-control" placeholder="example@example.com">
             </div>
+            <div class="form-group">
+                <label for="loginPassword">パスワード</label>
+                <input type="password" id="loginPassword"
+                       class="form-control" placeholder="6文字以上">
+                <small class="help-text">※新規登録時は6文字以上</small>
+            </div>
+            <div class="button-group">
+                <button id="loginButton" class="btn-primary">ログイン</button>
+                <button id="registerButton" class="btn-secondary">新規登録</button>
+            </div>
+        </div>
+
+        <!-- ログイン情報（ログイン時表示） -->
+        <div class="user-info logged-in">
+            <span>ログイン中：<span id="userEmail"></span></span>
+            <button id="logoutButton" class="btn-secondary">ログアウト</button>
+        </div>
+
+        <!-- 投稿フォーム（ログイン時表示） -->
+        <div class="post-form logged-in">
             <div class="form-group">
                 <label for="contentInput">投稿内容</label>
                 <textarea id="contentInput" class="form-control"
