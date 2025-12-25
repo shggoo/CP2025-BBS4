@@ -73,8 +73,8 @@ function validateContent(content) {
         showMessage('投稿内容を入力してください', 'error');
         return false;
     }
-    if (content.length > 1000) {
-        showMessage('投稿内容は1000文字以内で入力してください', 'error');
+    if (content.length > 100) {
+        showMessage('投稿内容は100文字以内で入力してください', 'error');
         return false;
     }
     return true;
@@ -121,7 +121,7 @@ function createPost(author, content) {
     .then(() => {
         showMessage('投稿が完了しました！');
         $('#contentInput').val('');
-        updateCharacterCount('contentInput', 'contentCount', 1000);
+        updateCharacterCount('contentInput', 'contentCount', 100);
     })
     .catch((error) => {
         showMessage('投稿に失敗しました：' + error.message, 'error');
@@ -337,7 +337,7 @@ function startEdit(postId) {
     const content = post.find('.post-content').text();
 
     $('#editContent').val(content);
-    updateCharacterCount('editContent', 'editContentCount', 1000);
+    updateCharacterCount('editContent', 'editContentCount', 100);
     showModal('editModal');
 }
 
@@ -382,7 +382,7 @@ function animateUpdate(postId) {
     post.addClass('updated');
     setTimeout(() => {
         post.removeClass('updated');
-    }, 1000);
+    }, 100);
 }
 
 // ログイン処理
@@ -475,7 +475,7 @@ $(function() {
      });
 
     // 文字数カウンターの初期化
-    updateCharacterCount('contentInput', 'contentCount', 1000);
+    updateCharacterCount('contentInput', 'contentCount', 100);
 
     // 投稿処理
     $('#postButton').on('click', () => {
@@ -553,7 +553,7 @@ window.addEventListener('unload', () => {
                 <label for="contentInput">投稿内容</label>
                 <textarea id="contentInput" class="form-control"
                           placeholder="投稿内容を入力してください"></textarea>
-                <small class="character-count" id="contentCount">0/1000</small>
+                <small class="character-count" id="contentCount">0/100</small>
             </div>
             <div class="button-group">
                 <button id="postButton" class="btn-primary">投稿する</button>
