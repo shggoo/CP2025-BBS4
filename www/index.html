@@ -144,14 +144,26 @@ function escapeHtml(str) {
 
 // タイムスタンプのフォーマット
 function formatTimestamp(timestamp) {
-    const date = new Date(timestamp);
-    return date.toLocaleString('ja-JP', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+    if (!timestamp) return '';
+    
+    const now = new Date().getTime();
+    const diff = (now - timestamp) / 1000; // 秒単位の差分
+
+    if (diff < 60) {
+        return 'たった今';
+    } else if (diff < 3600) {
+        return Math.floor(diff / 60) + '分前';
+    } else if (diff < 86400) {
+        return Math.floor(diff / 3600) + '時間前';
+    } else if (diff < 2592000) { // 30日以内
+        return Math.floor(diff / 86400) + '日前';
+    } else {
+        // 1ヶ月以上前は通常の日付表示
+        const date = new Date(timestamp);
+        return date.getFullYear() + '/' + (date.getMonth() + 1) + '/' + date.getDate();
+    }
+
+    
 }
 
 // 投稿の編集権限チェック
