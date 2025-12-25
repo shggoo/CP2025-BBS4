@@ -111,7 +111,7 @@ function createPost(author, content) {
 
     // author はログインしているユーザのメールアドレスに変更、userId を追加
     const postData = {
-        author: currentUser.email,
+        author: currentUser.displayName || '名無しさん',
         content: content,
         timestamp: firebase.database.ServerValue.TIMESTAMP,
         userId: currentUser.uid
@@ -419,10 +419,12 @@ function login(email, password) {
 
 // 新規登録処理
 function register(email, password) {
+    const nickname = $('#nicknameInput').val(); // ニックネームを取得
+    if (!nickname) {
+        showMessage('ニックネームを入力してください', 'error');
+        return;
+    }
     if (!validateAuthInput(email, password, true)) return;
-
-    const button = $('#registerButton');
-    button.prop('disabled', true);
 
     firebase.auth().createUserWithEmailAndPassword(email, password)
     .then(() => {
@@ -460,7 +462,7 @@ function updateUI(user) {
     if (user) {
         $('.logged-in').show();
         $('.logged-out').hide();
-        $('#userEmail').text(user.email);
+        $('#userEmail').text(user.displayName +'さん');
     } else {
         $('.logged-in').hide();
         $('.logged-out').show();
@@ -536,6 +538,10 @@ window.addEventListener('unload', () => {
 
         <!-- 認証フォーム（未ログイン時表示） -->
         <div class="auth-container logged-out">
+            <div class="form-group">
+                <label for="nicknameInput">ニックネーム</label>
+                <input type="text" id="nicknameInput" class="form-control" placeholder="ニックネーム">
+             </div>
             <div class="form-group">
                 <label for="loginEmail">メールアドレス</label>
                 <input type="email" id="loginEmail"
