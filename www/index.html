@@ -104,6 +104,11 @@ function createPost(author, content) {
         return;
     }
 
+    if (!currentUser.displayName) {
+    showMessage('プロフィール更新中のため、数秒待ってから投稿してください', 'error');
+    return;
+    }
+
     if (!validateContent(content)) return;
 
     const button = $('#postButton');
@@ -420,13 +425,21 @@ function login(email, password) {
 // 新規登録処理
 function register(email, password) {
     const nickname = $('#nicknameInput').val(); // ニックネームを取得
-    if (!nickname) {
+    if (!nickname || !nickname.trim()) {
         showMessage('ニックネームを入力してください', 'error');
         return;
     }
     if (!validateAuthInput(email, password, true)) return;
 
+    const button = $('#registerButton');
+    button.prop('disabled', true);
+
     firebase.auth().createUserWithEmailAndPassword(email, password)
+    .then((result) => {
+        return result.user.updateProfile({
+            displayName: nickname
+        });
+    })
     .then(() => {
         showMessage('アカウントを作成しました');
         clearAuthForm();
@@ -452,6 +465,7 @@ function logout() {
 
 // 認証フォームのクリア
 function clearAuthForm() {
+    $('#nicknameInput').val('');
     $('#loginEmail').val('');
     $('#loginPassword').val('');
 }
@@ -462,7 +476,7 @@ function updateUI(user) {
     if (user) {
         $('.logged-in').show();
         $('.logged-out').hide();
-        $('#userEmail').text(user.displayName +'さん');
+        $('#userEmail').text(user.email);
     } else {
         $('.logged-in').hide();
         $('.logged-out').show();
